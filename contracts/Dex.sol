@@ -201,7 +201,7 @@ contract Dex {
   }
 
   modifier tokenExist(bytes32 _ticker) {
-    require(tokens[_ticker].tokenAddress != address(0), "token does not exsist");
+    require(tokens[_ticker].tokenAddress != address(0), "token does not exist");
     _;
   }
 
