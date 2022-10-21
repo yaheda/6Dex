@@ -1,8 +1,9 @@
 pragma solidity 0.6.3;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 //import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract Dex {
 
@@ -20,9 +21,9 @@ contract Dex {
 
   struct Order {
     uint id;
+    address trader;
     Side side;
     bytes32 ticker;
-    address trader;
     uint amount;
     uint filled;
     uint price;
@@ -33,12 +34,12 @@ contract Dex {
   bytes32[] public tokenList;
   address public admin;
 
-  mapping(address => mapping(bytes => uint)) public traderBalances;
+  mapping(address => mapping(bytes32 => uint)) public traderBalances;
 
   mapping(bytes32 => mapping(uint => Order[])) public orderBook;
   uint public nextOrderId;
   uint public nextTradeId;
-  bytes32 constant DAI = bytes("DAI");
+  bytes32 constant DAI = bytes32("DAI");
 
   event NewTradeEvent(
     uint tradeId,
@@ -48,25 +49,26 @@ contract Dex {
     address indexed trader2,
     uint amount,
     uint price,
-    uint date,
+    uint date
   );
 
   constructor() public {
     admin = msg.sender;
   }
 
-  function getOrders(bytes ticker, Side side) external view returns(order[] memory) {
-    return orderBook[ticker][uint(side)]
+  function getOrders(bytes32 ticker, Side side) external view returns(Order[] memory) {
+    return orderBook[ticker][uint(side)];
   }
 
-  function getTokens() external view retuns(Token[] memory) {
+  function getTokens() external view returns(Token[] memory) {
     Token[] memory _tokens = new Token[](tokenList.length);
     for (uint i = 0; i < tokenList.length; i++) {
       _tokens[i] = Token(
         tokens[tokenList[i]].ticker,
-        tokens[tokenList[i]].tokenAddress,
+        tokens[tokenList[i]].tokenAddress
       );
     }
+    return _tokens;
   }
 
   function addToken(bytes32 ticker, address tokenAddress) onlyAdmin() external {
@@ -90,7 +92,7 @@ contract Dex {
   }
 
   function createLimitOrder(bytes32 ticker, uint amount, uint price, Side side) 
-    tokenExist(_ticker)
+    tokenExist(ticker)
     tokenIsNotDai(ticker)
     external {
     if (side == Side.SELL) {
@@ -100,7 +102,7 @@ contract Dex {
     }
 
     Order[] storage orders = orderBook[ticker][uint(side)];
-    orders.push(
+    orders.push(Order(
       nextOrderId,
       msg.sender,
       side,
@@ -109,7 +111,7 @@ contract Dex {
       0,
       price,
       now
-    );
+    ));
 
     //[30, 25, 22, 26] - bubble sort - buy
     uint i = orders.length > 0 ? orders.length - 1 : 0; // prevent underflow because ussigned int that can never be zero
@@ -122,6 +124,7 @@ contract Dex {
       }
       Order memory order = orders[i - 1];
       orders[i - 1] = orders[i];
+      orders[i] = order;
       i.sub(1);
     }
 
@@ -133,11 +136,11 @@ contract Dex {
     tokenExist(ticker)
     tokenIsNotDai(ticker) 
     external {
-    if (side == side.SELL) {
+    if (side == Side.SELL) {
       require(traderBalances[msg.sender][ticker] >= amount, "token balance too low");
     } 
 
-    Order[] storage orders = orderbook[ticker][uint(side == Side.BUY ? Side.SELL : Side.BUY)];
+    Order[] storage orders = orderBook[ticker][uint(side == Side.BUY ? Side.SELL : Side.BUY)];
     uint i;
     uint remaining = amount;
 
@@ -149,37 +152,37 @@ contract Dex {
 
       emit NewTradeEvent(
         nextTradeId,
-        order[i].id,
+        orders[i].id,
         ticker,
         orders[i].trader,
         msg.sender,
         matched,
         orders[i].price,
         now
-      )
+      );
 
-      if (side == side.SELL) {
+      if (side == Side.SELL) {
         traderBalances[msg.sender][ticker] = traderBalances[msg.sender][ticker]
           .sub(matched);
-        traderBalances[msg.sender][Dai] = traderBalances[msg.sender][Dai]
-          .add(matched.mul(orders[i]price));
+        traderBalances[msg.sender][DAI] = traderBalances[msg.sender][DAI]
+          .add(matched.mul(orders[i].price));
 
         traderBalances[orders[i].trader][ticker] = traderBalances[orders[i].trader][ticker]
           .add(matched);
-        traderBalances[orders[i].trader][Dai] = traderBalances[orders[i].trader][Dai]
-          .sub(matched.mul(orders[i]price));
+        traderBalances[orders[i].trader][DAI] = traderBalances[orders[i].trader][DAI]
+          .sub(matched.mul(orders[i].price));
       } else {
-        require(traderBalances[msg.sender][DAI] >= amount.mul(price), "dai balance too low");
+        require(traderBalances[msg.sender][DAI] >= amount.mul(orders[i].price), "dai balance too low");
 
         traderBalances[msg.sender][ticker] = traderBalances[msg.sender][ticker]
           .add(matched);
-        traderBalances[msg.sender][Dai] = traderBalances[msg.sender][Dai]
-          .sub(matched.mul(orders[i]price));
+        traderBalances[msg.sender][DAI] = traderBalances[msg.sender][DAI]
+          .sub(matched.mul(orders[i].price));
 
         traderBalances[orders[i].trader][ticker] = traderBalances[orders[i].trader][ticker]
           .sub(matched);
-        traderBalances[orders[i].trader][Dai] = traderBalances[orders[i].trader][Dai]
-          .add(matched.mul(orders[i]price));
+        traderBalances[orders[i].trader][DAI] = traderBalances[orders[i].trader][DAI]
+          .add(matched.mul(orders[i].price));
       }
 
       nextTradeId = nextTradeId.add(1);
@@ -207,7 +210,7 @@ contract Dex {
     _;
   }
 
-  modifier tokenIsNotDai(ticker) {
+  modifier tokenIsNotDai(bytes32 ticker) {
     require(ticker != DAI, "cannot trade DAI");
     _;
   }
