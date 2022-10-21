@@ -5,4 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 constract Rep is ERC20 {
   constructor() ERC20("REP", "Augur Token") public { }
+
+  function faucet(address to, uint amount) external {
+    _mint(to, amount);
+  }
 }
