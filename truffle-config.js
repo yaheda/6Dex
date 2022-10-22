@@ -45,6 +45,7 @@
 // const { MNEMONIC, PROJECT_ID } = process.env;
 
 // const HDWalletProvider = require('@truffle/hdwallet-provider');
+const path = require("path");
 
 module.exports = {
   /**
@@ -109,6 +110,8 @@ module.exports = {
   mocha: {
     // timeout: 100000
   },
+
+  contracts_build_directory: path.join(__dirname, "clients/src/contracts"),
 
   // Configure your compilers
   compilers: {

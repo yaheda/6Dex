@@ -3,10 +3,10 @@ const Bat = artifacts.require("mocks/Bat.sol");
 const Rep = artifacts.require("mocks/Rep.sol");
 const Zrx = artifacts.require("mocks/Zrx.sol");
 
-const Dex = artifacts.require("mocks/Dex.sol");
+const Dex = artifacts.require("Dex.sol");
 
 const { expectRevert, expectEvent, BN } = require('@openzeppelin/test-helpers');
-const { web3 } = require('@openzeppelin/test-helpers/src/setup');
+
 
 const SIDE = {
   BUY: 0,
@@ -103,26 +103,6 @@ contract('Dex', (accounts) => {
       dex.withdraw(amount, DAI, { from: trader1 }),
       'balance too low'
     );
-  });
-
-  it('create limit order - sell', async () => {
-    
-
-    const amount = web3.utils.toWei('1');
-    const price = '2';
-    const side = 1;
-
-    await dex.createLimitOrder(BAT, amount, price, side, { from: trader1 });
-
-    const orders = dex.getOrders(BAT, side);
-    assert(orders.length == 1, 'has one element');
-    assert(orders[0].nextOrderId == 1, 'orderid equals 1');
-    assert(orders[0].trader == trader1);
-    assert(orders[0].side == side);
-    assert(web3.utils.fromAscii(orders[0].ticker) == BAT);
-    assert(orders[0].amount == amount);
-    assert(orders[0].filled == 0);
-    assert(orders[0].price == price);
   });
 
   it('create limit order - buy', async () => {
