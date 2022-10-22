@@ -190,7 +190,7 @@ contract Dex {
     }
 
     /// remove filled orders
-    i == 0;
+    i = 0;
     while(i < orders.length && orders[i].filled == orders[i].amount) {
       for (uint j = i; j < orders.length - 1; j++) {
         orders[j] = orders[j.add(1)];
